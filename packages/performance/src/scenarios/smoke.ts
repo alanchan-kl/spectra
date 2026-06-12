@@ -4,6 +4,10 @@ import type { Options } from 'k6/options';
 import { apiBaseUrl } from '../config.ts';
 import { defaultThresholds } from '../../thresholds.ts';
 
+// Drop a timestamped JSON + HTML report into reports/ on every run (no Grafana needed).
+import { makeHandleSummary } from '../lib/summary.ts';
+export const handleSummary = makeHandleSummary('smoke');
+
 /** Smoke: 1 VU, 1 iteration — a sanity check that the system responds at all. */
 export const options: Options = {
   vus: 1,

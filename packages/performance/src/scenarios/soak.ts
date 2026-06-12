@@ -2,6 +2,10 @@ import type { Options } from 'k6/options';
 import { userJourney } from '../lib/journey.ts';
 import { defaultThresholds } from '../../thresholds.ts';
 
+// Drop a timestamped JSON + HTML report into reports/ on every run (no Grafana needed).
+import { makeHandleSummary } from '../lib/summary.ts';
+export const handleSummary = makeHandleSummary('soak');
+
 /**
  * Soak / endurance: a moderate, steady load held for a long time to surface
  * memory leaks and resource exhaustion. Shorten via `DURATION` while iterating

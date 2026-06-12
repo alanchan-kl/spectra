@@ -1,0 +1,2 @@
+# The k6 entrypoint runs inside alpine sh — keep LF so it isn't broken by CRLF.
+*.sh text eol=lf

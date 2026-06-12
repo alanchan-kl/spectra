@@ -83,6 +83,27 @@ pnpm --filter @spectra/performance docker:load:mock  # ~2 min load against mocka
 pnpm --filter @spectra/performance grafana:down
 ```
 
+### 6. Report files without Grafana (JSON + HTML)
+
+Every scenario re-exports a shared `handleSummary()`
+([src/lib/summary.ts](src/lib/summary.ts)), and the k6 container's entrypoint
+([scripts/k6-report-entrypoint.sh](scripts/k6-report-entrypoint.sh)) pre-creates
+a per-run folder. So **each run writes its own
+`reports/<scenario>-<UTC-timestamp>/report.json` + `report.html`** (gitignored)
+and still prints the text summary. Open the HTML in any browser — a full report,
+no Grafana.
+
+```bash
+pnpm --filter @spectra/performance docker:report   # load vs mock (auto-starts mockapi)
+# any scenario produces a report, e.g. a quick one:
+docker compose run --rm -e BASE_URL=http://mockapi k6 run src/scenarios/smoke.ts
+```
+
+- `report.json` — aggregated metrics + threshold results (machine-readable / CI artifact).
+- `report.html` — standalone visual report (via the k6-reporter jslib; needs container internet).
+- Pass/fail truth is k6's **exit code** (non-zero if any threshold is breached).
+- `inspect`/`version` create no folder; only `run` does.
+
 > Note: k6's loader does not auto-append extensions, so local imports in the
 > scenarios use explicit `.ts` (e.g. `import { userJourney } from '../lib/journey.ts'`).
 > `tsconfig.json` sets `allowImportingTsExtensions` so `tsc` accepts them too.

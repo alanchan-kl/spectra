@@ -1,0 +1,10 @@
+# k6 report artifacts (regenerated each run)
+reports/*
+!reports/.gitkeep
+
+# stray k6 outputs if a flag writes to the package root
+summary.json
+summary.html
+raw.json
+raw.csv
+*.gz

@@ -16,6 +16,7 @@
     "docker:load": "docker compose run --rm k6 run src/scenarios/load.ts",
     "docker:load:influx": "docker compose run --rm k6 run --out influxdb=http://influxdb:8086/k6 src/scenarios/load.ts",
     "docker:load:mock": "docker compose run --rm -e BASE_URL=http://mockapi k6 run --out influxdb=http://influxdb:8086/k6 src/scenarios/load.ts",
+    "docker:report": "docker compose run --rm -e BASE_URL=http://mockapi k6 run src/scenarios/load.ts",
     "grafana:up": "docker compose up -d",
     "grafana:down": "docker compose down",
     "typecheck": "tsc --noEmit"

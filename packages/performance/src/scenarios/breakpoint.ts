@@ -2,6 +2,10 @@ import type { Options } from 'k6/options';
 import { userJourney } from '../lib/journey.ts';
 import { breakpointThresholds } from '../../thresholds.ts';
 
+// Drop a timestamped JSON + HTML report into reports/ on every run (no Grafana needed).
+import { makeHandleSummary } from '../lib/summary.ts';
+export const handleSummary = makeHandleSummary('breakpoint');
+
 /**
  * Breakpoint: ramp request rate continuously until the SLA breaks. The
  * `abortOnFail` thresholds stop the run at the breaking point — the capacity
