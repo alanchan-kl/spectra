@@ -23,3 +23,18 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - influxdb
+
+  # Containerised k6 — run scenarios without installing k6 on the host.
+  # The image's entrypoint is `k6`, so pass `run`/`inspect` + args via:
+  #   docker compose run --rm k6 run src/scenarios/smoke.ts
+  #   docker compose run --rm k6 inspect src/scenarios/load.ts   # dry run, 0 requests
+  # Behind the "k6" profile so `grafana:up` (compose up) doesn't launch it.
+  k6:
+    image: grafana/k6:latest        # k6 >= 0.57 runs TypeScript natively
+    container_name: spectra-k6
+    profiles: ["k6"]
+    working_dir: /work
+    volumes:
+      - .:/work                     # mount the whole package so relative imports resolve
+    # For InfluxDB output, target the peer container hostname, not localhost:
+    #   docker compose run --rm k6 run --out influxdb=http://influxdb:8086/k6 src/scenarios/load.ts

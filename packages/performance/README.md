@@ -13,6 +13,65 @@ k6 is a **system CLI**, not an npm package:
 
 (k6 runs TypeScript directly — no bundling step needed.)
 
+## Run k6 in Docker (no native install)
+
+Prefer not to install k6 (or Node tooling) on your machine? Run it as a
+container — the only host prerequisite is **Docker Desktop**. A `k6` service is
+defined in [docker-compose.yml](docker-compose.yml) (behind the `k6` profile, so
+it doesn't start with `grafana:up`). Commands below are
+`pnpm --filter @spectra/performance <script>` from the repo root, or raw
+`docker compose ...` from inside `packages/performance/`.
+
+### 0. Prerequisite (one-time)
+
+Install **Docker Desktop** and make sure it's running (`docker version` works).
+The first run pulls the `grafana/k6` image (one-time, ~tens of MB).
+
+### 1. Dry run — zero traffic (validate, send no requests)
+
+```bash
+pnpm --filter @spectra/performance docker:inspect
+# raw form, any scenario:
+docker compose run --rm k6 inspect src/scenarios/stress.ts
+```
+
+`k6 inspect` parses the script and prints the resolved options/stages/thresholds
+as JSON **without running iterations** — 0 requests. It catches bad imports,
+malformed stages, and invalid thresholds, with no k6 or Node on the host.
+
+### 2. Dry run — minimal real run (one request)
+
+```bash
+pnpm --filter @spectra/performance docker:smoke    # 1 VU, 1 iteration, single GET
+```
+
+### 3. Real test types (point at your OWN target, never the public demo)
+
+```bash
+docker compose run --rm k6 run src/scenarios/load.ts
+docker compose run --rm k6 run -e SYSTEM=system-b -e ENV=staging src/scenarios/load.ts
+docker compose run --rm k6 run -e DURATION=10s src/scenarios/soak.ts   # only soak honours DURATION
+```
+
+> Heavy scenarios (`load`/`stress`/`breakpoint`/`soak`) define an
+> `options.scenarios` block, so k6 **ignores** `--vus`/`--iterations` flags. Use
+> `smoke` or `inspect` for a quick/dry check.
+
+### 4. With the Grafana dashboard
+
+```bash
+pnpm --filter @spectra/performance grafana:up          # starts influxdb + grafana
+pnpm --filter @spectra/performance docker:load:influx  # k6 -> influxdb (container hostname)
+# open http://localhost:3000  ->  import dashboard id 2587
+pnpm --filter @spectra/performance grafana:down
+```
+
+Inside the k6 container the metrics target is `http://influxdb:8086/k6` (a peer
+container), **not** `localhost`.
+
+> If a pinned older k6 image ever fails to parse a `.ts` scenario, add
+> `--compatibility-mode=experimental_enhanced` to the `run`/`inspect` args.
+
 ## Test types
 
 | Script | Command | What it shows |
