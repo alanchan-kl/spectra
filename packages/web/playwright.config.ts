@@ -39,7 +39,7 @@ export default defineConfig({
         baseURL: config.webBaseUrl,
         headless: config.headless,
         screenshot: 'only-on-failure',
-        trace: 'retain-on-failure',
+        trace: 'retain-on-failure', 
       },
     },
     {
