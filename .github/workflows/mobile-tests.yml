@@ -1,0 +1,58 @@
+name: Mobile Tests
+
+# Mobile runs are heavy (emulator/simulator), so trigger manually or on a
+# schedule rather than on every PR.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *" # nightly 03:00 UTC
+
+jobs:
+  android:
+    # Android emulator runs on a Linux runner with KVM.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      # TODO: build or download your app and place the .apk under packages/mobile/apps/
+      # - uses: actions/download-artifact@v4
+      #   with: { name: app-debug, path: packages/mobile/apps }
+
+      - name: Run Maestro flows on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            # adb install packages/mobile/apps/app-debug.apk
+            maestro test \
+              -e APP_ID=com.saucelabs.mydemoapp.rn \
+              --format junit \
+              --output allure-results/mobile-results.xml \
+              packages/mobile/flows/
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: allure-results-mobile-android
+          path: allure-results
+          if-no-files-found: ignore
+
+  # iOS requires a macOS runner + Xcode Simulator. Uncomment when you have an
+  # iOS build to test.
+  #
+  # ios:
+  #   runs-on: macos-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - run: curl -Ls "https://get.maestro.mobile.dev" | bash
+  #     - run: echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+  #     - run: xcrun simctl boot "iPhone 15"
+  #     # - run: xcrun simctl install booted packages/mobile/apps/MyApp.app
+  #     - run: maestro test -e APP_ID=com.example.app packages/mobile/flows/

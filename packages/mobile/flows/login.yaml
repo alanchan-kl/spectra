@@ -1,0 +1,37 @@
+# Login flow for the Sauce Labs NATIVE "My Demo App".
+#
+# Selectors are the app's real Android resource-ids (verified against the
+# running app via the view hierarchy). On iOS the ids differ — capture them with
+# `pnpm --filter @spectra/mobile studio` and add an iOS variant if needed.
+#
+# Platform / multi-system — pass the app id via APP_ID:
+#   Android: maestro test -e APP_ID=com.saucelabs.mydemoapp.android flows/login.yaml
+#   iOS    : maestro test -e APP_ID=com.saucelabs.mydemo.app.ios   flows/login.yaml
+appId: ${APP_ID}
+tags:
+  - login
+env:
+  USERNAME: bob@example.com
+  PASSWORD: "10203040"
+---
+- runFlow: ../subflows/launch.yaml
+# Wait for the catalog to finish rendering (cold start can be slow on an emulator)
+- extendedWaitUntil:
+    visible: "Products"
+    timeout: 60000
+# Open the side menu and go to the login screen
+- tapOn:
+    id: "menuIV"
+- tapOn: "Log In"
+# Enter credentials
+- tapOn:
+    id: "nameET"
+- inputText: ${USERNAME}
+- tapOn:
+    id: "passwordET"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "loginBtn"
+# Successful login returns to the product catalog
+- assertVisible: "Products"

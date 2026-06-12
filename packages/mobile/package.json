@@ -1,0 +1,14 @@
+{
+  "name": "@spectra/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Maestro mobile E2E flows (iOS + Android). Maestro is a system CLI, not an npm dependency — see README.",
+  "scripts": {
+    "test": "maestro test -e APP_ID=com.saucelabs.mydemoapp.android flows/",
+    "test:ios": "maestro test -e APP_ID=com.saucelabs.mydemo.app.ios flows/",
+    "test:smoke": "maestro test --include-tags=smoke -e APP_ID=com.saucelabs.mydemoapp.android flows/",
+    "test:junit": "maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format junit --output ../../allure-results/mobile-results.xml flows/",
+    "test:parallel": "maestro test --shards 2 -e APP_ID=com.saucelabs.mydemoapp.android flows/",
+    "studio": "maestro studio"
+  }
+}

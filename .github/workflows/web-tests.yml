@@ -1,0 +1,37 @@
+name: Web Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Add more systems here to fan out in parallel, e.g. [system-a, system-b]
+        system: [system-a]
+        env: [staging]
+    env:
+      SYSTEM: ${{ matrix.system }}
+      ENV: ${{ matrix.env }}
+      TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @spectra/web exec playwright install --with-deps chromium
+      - run: pnpm test:web
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: allure-results-web-${{ matrix.system }}-${{ matrix.env }}
+          path: allure-results
+          if-no-files-found: ignore

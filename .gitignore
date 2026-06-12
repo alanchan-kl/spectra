@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Test reports & artifacts
+allure-results/
+allure-report/
+playwright-report/
+test-results/
+blob-report/
+.last-run.json
+packages/performance/results/
+packages/performance/summary.html
+packages/mobile/**/report/
+packages/mobile/**/*.mp4
+packages/mobile/**/*.png
+
+# Built mobile apps under test
+packages/mobile/apps/*
+!packages/mobile/apps/.gitkeep
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Turbo
+.turbo/

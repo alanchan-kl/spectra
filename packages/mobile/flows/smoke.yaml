@@ -1,0 +1,9 @@
+# Bulletproof smoke: launch the app from a clean state and capture a screenshot.
+# Works the moment the app is installed on the device/emulator — proves the
+# Maestro wiring end-to-end without depending on any specific selector.
+appId: ${APP_ID}
+tags:
+  - smoke
+---
+- runFlow: ../subflows/launch.yaml
+- takeScreenshot: launch

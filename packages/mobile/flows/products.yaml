@@ -1,0 +1,20 @@
+# Products flow — browse the catalog and open a product's detail page.
+# Verified against the running native app (Android resource-ids + visible text).
+#
+# To extend into an add-to-cart journey, open the detail page and use Maestro
+# Studio (`pnpm --filter @spectra/mobile studio`) to capture the (below-the-fold)
+# "Add to cart" button id, then append a scroll + tap + cart-badge assertion.
+appId: ${APP_ID}
+tags:
+  - regression
+  - products
+---
+# Warm launch (no clearState) — browsing needs no pristine state, and it avoids
+# the slow cold-start catalog re-render on software-GPU emulators.
+- launchApp
+- extendedWaitUntil:
+    visible: "Products"
+    timeout: 60000
+- tapOn: "Sauce Labs Backpack"
+# The detail page shows selectable colour variants
+- assertVisible: "Sauce Labs Backpack (green)"

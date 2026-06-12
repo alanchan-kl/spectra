@@ -1,0 +1,2 @@
+# Place built .app (iOS Simulator) / .apk (Android) artifacts here.
+# These are gitignored — built in CI or downloaded per run.

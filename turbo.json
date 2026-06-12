@@ -1,0 +1,28 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "test": {
+      "cache": false,
+      "outputs": ["../../allure-results/**"]
+    },
+    "test:web": {
+      "cache": false,
+      "outputs": ["../../allure-results/**"]
+    },
+    "test:api": {
+      "cache": false,
+      "outputs": ["../../allure-results/**"]
+    },
+    "test:mobile": {
+      "cache": false,
+      "outputs": ["../../allure-results/**"]
+    },
+    "test:performance": {
+      "cache": false
+    },
+    "lint": {},
+    "clean": {
+      "cache": false
+    }
+  }
+}

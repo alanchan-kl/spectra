@@ -1,0 +1,38 @@
+name: Performance Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "Scenario to run"
+        type: choice
+        default: smoke
+        options: [smoke, load, stress, breakpoint, soak]
+  schedule:
+    - cron: "0 2 * * *" # nightly 02:00 UTC
+
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+    env:
+      SYSTEM: system-a
+      ENV: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 scenario
+        # Defaults to a quick load test on schedule; honors the dispatch input.
+        run: |
+          SCENARIO="${{ github.event.inputs.scenario || 'load' }}"
+          k6 run "packages/performance/src/scenarios/${SCENARIO}.ts" \
+            --summary-export "k6-summary-${SCENARIO}.json"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: k6-summary
+          path: k6-summary-*.json
+          if-no-files-found: ignore

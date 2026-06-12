@@ -1,0 +1,7 @@
+# Reusable subflow: launch the app under test from a clean state.
+# Invoked from feature flows via `runFlow`. This is Maestro's DRY mechanism —
+# the equivalent of a page-object base method.
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true

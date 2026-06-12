@@ -1,0 +1,25 @@
+{
+  "name": "@spectra/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bddgen && playwright test",
+    "test:web": "bddgen && playwright test --project=web",
+    "test:api": "bddgen && playwright test --project=api",
+    "test:headed": "bddgen && playwright test --project=web --headed",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf .features-gen test-results playwright-report"
+  },
+  "dependencies": {
+    "@spectra/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^22.0.0",
+    "allure-playwright": "^3.0.0",
+    "playwright-bdd": "^9.0.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.6.0"
+  }
+}

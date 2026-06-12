@@ -1,0 +1,10 @@
+# Auto-wires the InfluxDB datasource so the k6 dashboard works on first launch.
+apiVersion: 1
+datasources:
+  - name: InfluxDB-k6
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    database: k6
+    isDefault: true
+    editable: true

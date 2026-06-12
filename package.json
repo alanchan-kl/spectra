@@ -1,0 +1,30 @@
+{
+  "name": "spectra",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Spectra — unified QA automation framework: web, mobile, API, and performance testing in one place.",
+  "packageManager": "pnpm@11.6.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test:web": "pnpm --filter @spectra/web test:web",
+    "test:api": "pnpm --filter @spectra/web test:api",
+    "test:mobile": "pnpm --filter @spectra/mobile test",
+    "test:performance": "pnpm --filter @spectra/performance test:smoke",
+    "test:all": "turbo run test --parallel",
+    "report:generate": "allure generate allure-results --clean -o allure-report",
+    "report:open": "allure open allure-report",
+    "report": "pnpm report:generate && pnpm report:open",
+    "typecheck": "tsc -b",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean && rimraf allure-results allure-report"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "allure-commandline": "^2.30.0",
+    "rimraf": "^6.0.1",
+    "turbo": "^2.1.0",
+    "typescript": "^5.6.0"
+  }
+}

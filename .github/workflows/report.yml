@@ -1,0 +1,54 @@
+name: Unified Allure Report
+
+# Runs the functional suites, builds ONE Allure report (web + API), and
+# publishes it to GitHub Pages. Enable Pages (Settings → Pages → GitHub Actions)
+# for the deploy step to work.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * *" # nightly 04:00 UTC, after the test workflows
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      SYSTEM: system-a
+      ENV: staging
+      TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @spectra/web exec playwright install --with-deps chromium
+
+      # Collect results from every functional layer into allure-results/
+      - run: pnpm test:api || true
+      - run: pnpm test:web || true
+
+      - name: Generate unified Allure report
+        run: pnpm report:generate
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: allure-report
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,11 @@
+# Maestro workspace configuration.
+# https://maestro.mobile.dev/cli/configuration
+flows:
+  - "flows/*.yaml"
+
+# Run the smoke flow first when ordering matters.
+executionOrder:
+  flowsOrder:
+    - smoke
+    - login
+    - products
