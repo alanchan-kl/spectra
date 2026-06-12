@@ -19,8 +19,13 @@ const API_BASE_URLS: Record<SystemName, Record<EnvName, string>> = {
   },
 };
 
-/** Resolve the API base URL for the active SYSTEM + ENV. */
+/**
+ * Resolve the API base URL. An explicit `BASE_URL` always wins (e.g. point at a
+ * local mock with `-e BASE_URL=http://mockapi`); otherwise resolve from
+ * SYSTEM + ENV.
+ */
 export function apiBaseUrl(): string {
+  if (__ENV.BASE_URL) return __ENV.BASE_URL;
   const system = (__ENV.SYSTEM ?? 'system-a') as SystemName;
   const env = (__ENV.ENV ?? 'dev') as EnvName;
   return API_BASE_URLS[system][env];

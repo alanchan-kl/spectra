@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
-import { apiBaseUrl } from '../config';
+import { apiBaseUrl } from '../config.ts';
 
 /**
  * The user journey exercised by every load profile. Keeping it here (one place)

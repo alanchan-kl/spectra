@@ -1,6 +1,6 @@
 import type { Options } from 'k6/options';
-import { userJourney } from '../lib/journey';
-import { breakpointThresholds } from '../../thresholds';
+import { userJourney } from '../lib/journey.ts';
+import { breakpointThresholds } from '../../thresholds.ts';
 
 /**
  * Breakpoint: ramp request rate continuously until the SLA breaks. The

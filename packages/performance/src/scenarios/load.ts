@@ -1,6 +1,6 @@
 import type { Options } from 'k6/options';
-import { userJourney } from '../lib/journey';
-import { defaultThresholds } from '../../thresholds';
+import { userJourney } from '../lib/journey.ts';
+import { defaultThresholds } from '../../thresholds.ts';
 
 /** Load: ramp to the expected peak and hold — behaviour under normal traffic. */
 export const options: Options = {

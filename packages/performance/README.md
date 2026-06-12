@@ -62,15 +62,30 @@ docker compose run --rm k6 run -e DURATION=10s src/scenarios/soak.ts   # only so
 ```bash
 pnpm --filter @spectra/performance grafana:up          # starts influxdb + grafana
 pnpm --filter @spectra/performance docker:load:influx  # k6 -> influxdb (container hostname)
-# open http://localhost:3000  ->  import dashboard id 2587
+# open http://localhost:3000/d/k6-perf  (auto-provisioned, no import)
 pnpm --filter @spectra/performance grafana:down
 ```
 
 Inside the k6 container the metrics target is `http://influxdb:8086/k6` (a peer
 container), **not** `localhost`.
 
-> If a pinned older k6 image ever fails to parse a `.ts` scenario, add
-> `--compatibility-mode=experimental_enhanced` to the `run`/`inspect` args.
+### 5. Real load curves against a local mock (no public target)
+
+The compose stack includes a tiny `mockapi` (nginx) that mimics `/posts` and
+`/posts/1`, so you can generate real load curves **without hitting any public
+API**. Scenarios honour a `BASE_URL` override (see `src/config.ts`); the
+`docker:load:mock` script points k6 at the mock and streams to InfluxDB:
+
+```bash
+pnpm --filter @spectra/performance grafana:up        # influxdb + grafana + mockapi
+pnpm --filter @spectra/performance docker:load:mock  # ~2 min load against mockapi -> influxdb
+# open http://localhost:3000/d/k6-perf  (auto-provisioned; set range to "Last 15 minutes")
+pnpm --filter @spectra/performance grafana:down
+```
+
+> Note: k6's loader does not auto-append extensions, so local imports in the
+> scenarios use explicit `.ts` (e.g. `import { userJourney } from '../lib/journey.ts'`).
+> `tsconfig.json` sets `allowImportingTsExtensions` so `tsc` accepts them too.
 
 ## Test types
 
@@ -98,14 +113,15 @@ k6 run -e SYSTEM=system-b -e ENV=staging src/scenarios/load.ts
 ```bash
 pnpm --filter @spectra/performance grafana:up          # start InfluxDB + Grafana (Docker)
 pnpm --filter @spectra/performance test:load:influx    # run load test, stream metrics to InfluxDB
-# open http://localhost:3000  →  Dashboards
+# open http://localhost:3000/d/k6-perf                 # the k6 dashboard
 pnpm --filter @spectra/performance grafana:down        # stop the stack
 ```
 
-The InfluxDB datasource is auto-provisioned. Import the community **k6 Load
-Testing Results** dashboard (Grafana.com ID `2587`) to get response-time,
-throughput, VU, and error-rate time-series — exactly what demonstrates the
-stress / soak / breakpoint / load curves.
+Both the InfluxDB datasource **and** a **k6 Load Testing Results** dashboard are
+auto-provisioned (see [grafana/provisioning/](grafana/provisioning/)) — no manual
+import. Open `/d/k6-perf` for response-time, throughput, VU, and error-rate
+time-series, exactly what demonstrates the stress / soak / breakpoint / load
+curves.
 
 > Allure is intentionally **not** used here — it's pass/fail oriented and can't
 > render performance time-series. Grafana is the right surface for that.

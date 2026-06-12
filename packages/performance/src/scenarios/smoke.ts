@@ -1,8 +1,8 @@
 import { check, group } from 'k6';
 import http from 'k6/http';
 import type { Options } from 'k6/options';
-import { apiBaseUrl } from '../config';
-import { defaultThresholds } from '../../thresholds';
+import { apiBaseUrl } from '../config.ts';
+import { defaultThresholds } from '../../thresholds.ts';
 
 /** Smoke: 1 VU, 1 iteration — a sanity check that the system responds at all. */
 export const options: Options = {

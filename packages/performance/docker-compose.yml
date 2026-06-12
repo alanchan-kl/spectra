@@ -24,6 +24,14 @@ services:
     depends_on:
       - influxdb
 
+  # Tiny local mock API so load/stress tests can generate real curves WITHOUT
+  # hitting any public/demo API. k6 targets it via -e BASE_URL=http://mockapi.
+  mockapi:
+    image: nginx:alpine
+    container_name: spectra-mockapi
+    volumes:
+      - ./mock/default.conf:/etc/nginx/conf.d/default.conf:ro
+
   # Containerised k6 — run scenarios without installing k6 on the host.
   # The image's entrypoint is `k6`, so pass `run`/`inspect` + args via:
   #   docker compose run --rm k6 run src/scenarios/smoke.ts

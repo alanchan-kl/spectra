@@ -1,6 +1,6 @@
 import type { Options } from 'k6/options';
-import { userJourney } from '../lib/journey';
-import { defaultThresholds } from '../../thresholds';
+import { userJourney } from '../lib/journey.ts';
+import { defaultThresholds } from '../../thresholds.ts';
 
 /**
  * Soak / endurance: a moderate, steady load held for a long time to surface

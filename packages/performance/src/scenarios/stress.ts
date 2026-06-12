@@ -1,6 +1,6 @@
 import type { Options } from 'k6/options';
-import { userJourney } from '../lib/journey';
-import { defaultThresholds } from '../../thresholds';
+import { userJourney } from '../lib/journey.ts';
+import { defaultThresholds } from '../../thresholds.ts';
 
 /** Stress: ramp well past peak to find where the system starts to degrade. */
 export const options: Options = {

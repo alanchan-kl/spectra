@@ -1,0 +1,14 @@
+# Auto-loads any dashboard JSON in this folder so k6 results are visible with no
+# manual import. The k6 dashboard (k6.json) binds to the InfluxDB-k6 datasource.
+apiVersion: 1
+providers:
+  - name: k6
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false
