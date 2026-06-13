@@ -48,7 +48,7 @@ jobs:
           script: |
             adb install -r packages/mobile/apps/app.apk
             mkdir -p allure-results maestro-output maestro-html
-            maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format junit --test-suite-name "Mobile (Android)" --output allure-results/mobile-results.xml --debug-output maestro-output packages/mobile/flows/ ; rc=$?
+            maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format junit --test-suite-name "Mobile (Android)" --output allure-results/mobile-results.xml --test-output-dir maestro-output packages/mobile/flows/ ; rc=$?
             maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format html --output maestro-html/report.html packages/mobile/flows/ || true
             exit $rc
 
@@ -59,11 +59,11 @@ jobs:
           path: allure-results
           if-no-files-found: ignore
 
-      - name: Upload Maestro debug output (screenshots + logs)
+      - name: Upload Maestro test output (screenshots, video, commands)
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: maestro-debug-android
+          name: maestro-output-android
           path: maestro-output
           if-no-files-found: ignore
 

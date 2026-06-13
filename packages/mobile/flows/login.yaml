@@ -35,3 +35,4 @@ env:
     id: "loginBtn"
 # Successful login returns to the product catalog
 - assertVisible: "Products"
+- takeScreenshot: login-success

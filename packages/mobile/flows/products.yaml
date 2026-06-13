@@ -18,3 +18,4 @@ tags:
 - tapOn: "Sauce Labs Backpack"
 # The detail page shows selectable colour variants
 - assertVisible: "Sauce Labs Backpack (green)"
+- takeScreenshot: product-detail
