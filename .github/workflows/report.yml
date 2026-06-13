@@ -1,30 +1,39 @@
-name: Unified Allure Report
+name: E2E Suite + Unified Report
 
-# Runs the functional suites, folds in the latest mobile results, builds ONE
-# Allure report (web + API + mobile), and publishes it to GitHub Pages. Enable
-# Pages (Settings → Pages → GitHub Actions) for the deploy step to work.
+# Fan-out / fan-in: run the web, API, and mobile suites in PARALLEL (each is a
+# reusable workflow), then merge all their Allure results into ONE report and
+# publish it to GitHub Pages. Enable Pages (Settings → Pages → GitHub Actions)
+# for the deploy step to work.
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 4 * * *" # nightly 04:00 UTC, after the test workflows
+    - cron: "0 3 * * *" # nightly 03:00 UTC — all suites + report in one run
 
 permissions:
   contents: read
   pages: write
   id-token: write
-  actions: read   # let `gh` list/download the latest Mobile Tests artifact
 
 jobs:
-  build-and-publish:
+  # ---- fan-out: the three suites run in parallel ------------------------------
+  web:
+    uses: ./.github/workflows/web-tests.yml
+    secrets: inherit
+  api:
+    uses: ./.github/workflows/api-tests.yml
+    secrets: inherit
+  mobile:
+    uses: ./.github/workflows/mobile-tests.yml
+    secrets: inherit
+
+  # ---- fan-in: merge every suite's results into one report -------------------
+  report:
+    needs: [web, api, mobile]
+    if: ${{ !cancelled() }} # build the report even if a suite failed
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
-    env:
-      SYSTEM: system-a
-      ENV: staging
-      TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
-      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -38,29 +47,15 @@ jobs:
           java-version: 17
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @spectra/web exec playwright install --with-deps chromium
 
-      # Collect results from every functional layer into allure-results/
-      - run: pnpm test:api || true
-      - run: pnpm test:web || true
-
-      # Mobile runs in its own (heavy) workflow; fold its latest results into this
-      # report so Pages shows web + API + mobile. Graceful if no mobile run exists.
-      - name: Pull latest mobile results into the report
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # newest FINISHED mobile run (pass or fail — we want failures in the report too)
-          RUN_ID=$(gh run list --workflow mobile-tests.yml --status completed --limit 1 \
-            --json databaseId -q '.[0].databaseId // empty')
-          if [ -n "$RUN_ID" ] && gh run download "$RUN_ID" -n allure-results-mobile-android -D mobile-dl; then
-            mkdir -p allure-results
-            # gh may nest the artifact in a subdir — flatten the JUnit xml into allure-results/
-            find mobile-dl -name '*.xml' -exec cp {} allure-results/ \;
-            echo "Merged mobile results from run $RUN_ID"
-          else
-            echo "No mobile artifact to merge — report will omit mobile."
-          fi
+      # Same-run artifacts from the reusable suite workflows. The pattern grabs
+      # web + API + mobile JUnit but NOT maestro-debug-android (screenshots).
+      - name: Gather all suite results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-*
+          path: allure-results
+          merge-multiple: true
 
       - name: Generate unified Allure report
         run: pnpm report:generate

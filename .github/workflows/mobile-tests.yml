@@ -1,11 +1,10 @@
 name: Mobile Tests
 
-# Mobile runs are heavy (emulator/simulator), so trigger manually or on a
-# schedule rather than on every PR.
+# Mobile runs are heavy (emulator). Run ad-hoc (workflow_dispatch) or as part of
+# the "E2E Suite + Unified Report" orchestrator (workflow_call) — never per-PR.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 3 * * *" # nightly 03:00 UTC
+  workflow_call: # called (in parallel with web/api) by the report orchestrator
 
 jobs:
   android:

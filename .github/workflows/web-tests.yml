@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_call: # callable by the "E2E Suite + Unified Report" orchestrator
 
 jobs:
   web:
