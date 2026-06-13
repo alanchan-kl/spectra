@@ -1,0 +1,21 @@
+# Negative login — reuses the SAME login subflow with DIFFERENT (invalid) creds,
+# then asserts the attempt was rejected. This is the concrete example of one
+# parameterised subflow serving many credential sets.
+#
+# (For a locked-out-user test, pass that user's creds and assert the lock error
+# instead — same shape, different env + assertion.)
+appId: ${APP_ID}
+tags:
+  - login
+  - negative
+---
+- runFlow:
+    file: ../subflows/login.yaml
+    env:
+      USERNAME: wrong@example.com
+      PASSWORD: wrongpassword
+# A rejected login leaves us on the login screen — the button is still there and
+# the catalog never returns. (Asserting the screen state, not a brittle error string.)
+- assertVisible:
+    id: "loginBtn"
+- takeScreenshot: login-rejected

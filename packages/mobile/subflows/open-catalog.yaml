@@ -1,0 +1,10 @@
+# Reusable subflow: warm-launch the app and wait for the product catalog. No
+# clearState — browsing needs no pristine state, and it avoids the slow
+# cold-start re-render on software-GPU emulators. For a clean cold launch, use
+# subflows/launch.yaml instead.
+appId: ${APP_ID}
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Products"
+    timeout: 60000

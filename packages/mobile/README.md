@@ -85,6 +85,49 @@ pnpm --filter @spectra/mobile test:junit
 pnpm report   # from repo root — combined Allure report
 ```
 
+## Reusing steps across flows
+
+When many scenarios share setup (launch, login, navigate), extract those steps
+**once** into `subflows/` and `runFlow` them — Maestro's DRY mechanism, the
+equivalent of a page-object method. Three levers:
+
+**1. Include a fragment**
+```yaml
+- runFlow: ../subflows/open-catalog.yaml
+```
+
+**2. Parameterise it** — pass data via `env`; the subflow declares defaults:
+```yaml
+- runFlow:
+    file: ../subflows/login.yaml
+    env:
+      USERNAME: alice@example.com
+      PASSWORD: secret
+```
+
+So a new authed journey is just composition — no re-typing the login dance:
+```yaml
+# flows/checkout.yaml
+appId: ${APP_ID}
+tags: [checkout]
+---
+- runFlow: ../subflows/login.yaml      # logged in (default creds)
+- tapOn: "Sauce Labs Backpack"
+- tapOn: "Add to cart"
+# ... assert cart ...
+```
+
+**3. Run setup before _every_ flow** with a `config.yaml` hook:
+```yaml
+# config.yaml
+onFlowStart:
+  - runFlow: subflows/launch.yaml
+```
+
+Use hooks for truly universal setup; use `runFlow` inside a flow for per-scenario
+control (e.g. warm vs cold launch). Subflows under `subflows/` aren't matched by
+the `flows/*.yaml` glob, so they only run when composed — never standalone.
+
 ## Structure
 
 ```
