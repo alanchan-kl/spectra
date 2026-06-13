@@ -14,6 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # GitHub's ubuntu runner has /dev/kvm but doesn't grant the runner user
+      # access by default, so the emulator falls back to software (-accel off)
+      # and never boots. This udev rule opens it up for hardware acceleration.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Install Maestro
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
@@ -39,14 +48,22 @@ jobs:
           # what made the flow path resolve to a bare "\" before.
           script: |
             adb install -r packages/mobile/apps/app.apk
-            mkdir -p allure-results
-            maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format junit --output allure-results/mobile-results.xml packages/mobile/flows/
+            mkdir -p allure-results maestro-output
+            maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format junit --output allure-results/mobile-results.xml --debug-output maestro-output packages/mobile/flows/
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
           name: allure-results-mobile-android
           path: allure-results
+          if-no-files-found: ignore
+
+      - name: Upload Maestro debug output (screenshots + logs)
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: maestro-debug-android
+          path: maestro-output
           if-no-files-found: ignore
 
   # iOS requires a macOS runner + Xcode Simulator. Uncomment when you have an

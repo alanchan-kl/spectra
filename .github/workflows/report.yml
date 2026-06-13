@@ -1,8 +1,8 @@
 name: Unified Allure Report
 
-# Runs the functional suites, builds ONE Allure report (web + API), and
-# publishes it to GitHub Pages. Enable Pages (Settings → Pages → GitHub Actions)
-# for the deploy step to work.
+# Runs the functional suites, folds in the latest mobile results, builds ONE
+# Allure report (web + API + mobile), and publishes it to GitHub Pages. Enable
+# Pages (Settings → Pages → GitHub Actions) for the deploy step to work.
 on:
   workflow_dispatch:
   schedule:
@@ -12,6 +12,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read   # let `gh` list/download the latest Mobile Tests artifact
 
 jobs:
   build-and-publish:
@@ -42,6 +43,24 @@ jobs:
       # Collect results from every functional layer into allure-results/
       - run: pnpm test:api || true
       - run: pnpm test:web || true
+
+      # Mobile runs in its own (heavy) workflow; fold its latest results into this
+      # report so Pages shows web + API + mobile. Graceful if no mobile run exists.
+      - name: Pull latest mobile results into the report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # newest FINISHED mobile run (pass or fail — we want failures in the report too)
+          RUN_ID=$(gh run list --workflow mobile-tests.yml --status completed --limit 1 \
+            --json databaseId -q '.[0].databaseId // empty')
+          if [ -n "$RUN_ID" ] && gh run download "$RUN_ID" -n allure-results-mobile-android -D mobile-dl; then
+            mkdir -p allure-results
+            # gh may nest the artifact in a subdir — flatten the JUnit xml into allure-results/
+            find mobile-dl -name '*.xml' -exec cp {} allure-results/ \;
+            echo "Merged mobile results from run $RUN_ID"
+          else
+            echo "No mobile artifact to merge — report will omit mobile."
+          fi
 
       - name: Generate unified Allure report
         run: pnpm report:generate
