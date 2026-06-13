@@ -47,8 +47,10 @@ jobs:
           # what made the flow path resolve to a bare "\" before.
           script: |
             adb install -r packages/mobile/apps/app.apk
-            mkdir -p allure-results maestro-output
-            maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format junit --output allure-results/mobile-results.xml --debug-output maestro-output packages/mobile/flows/
+            mkdir -p allure-results maestro-output maestro-html
+            maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format junit --test-suite-name "Mobile (Android)" --output allure-results/mobile-results.xml --debug-output maestro-output packages/mobile/flows/ ; rc=$?
+            maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format html --output maestro-html/report.html packages/mobile/flows/ || true
+            exit $rc
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -63,6 +65,14 @@ jobs:
         with:
           name: maestro-debug-android
           path: maestro-output
+          if-no-files-found: ignore
+
+      - name: Upload Maestro HTML report (steps + screenshots)
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: maestro-html-report
+          path: maestro-html
           if-no-files-found: ignore
 
   # iOS requires a macOS runner + Xcode Simulator. Uncomment when you have an
