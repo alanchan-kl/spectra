@@ -19,9 +19,14 @@ jobs:
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
-      # TODO: build or download your app and place the .apk under packages/mobile/apps/
-      # - uses: actions/download-artifact@v4
-      #   with: { name: app-debug, path: packages/mobile/apps }
+      # The app under test isn't committed (apps/ is gitignored), so fetch the
+      # Sauce Labs My Demo App APK (pkg com.saucelabs.mydemoapp.android) at the
+      # version the flows were verified against.
+      - name: Download app under test
+        run: |
+          mkdir -p packages/mobile/apps
+          curl -fL --retry 3 -o packages/mobile/apps/app.apk \
+            https://github.com/saucelabs/my-demo-app-android/releases/download/2.2.0/mda-2.2.0-25.apk
 
       - name: Run Maestro flows on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -29,13 +34,13 @@ jobs:
           api-level: 34
           arch: x86_64
           profile: pixel_6
+          # Install the app, then run the flows. Keep `maestro test` on ONE line —
+          # android-emulator-runner mangles backslash line-continuations, which is
+          # what made the flow path resolve to a bare "\" before.
           script: |
-            # adb install packages/mobile/apps/app-debug.apk
-            maestro test \
-              -e APP_ID=com.saucelabs.mydemoapp.rn \
-              --format junit \
-              --output allure-results/mobile-results.xml \
-              packages/mobile/flows/
+            adb install -r packages/mobile/apps/app.apk
+            mkdir -p allure-results
+            maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format junit --output allure-results/mobile-results.xml packages/mobile/flows/
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
