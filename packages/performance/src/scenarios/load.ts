@@ -1,6 +1,6 @@
 import type { Options } from 'k6/options';
 import { userJourney } from '../lib/journey.ts';
-import { defaultThresholds } from '../../thresholds.ts';
+import { journeyThresholds } from '../../thresholds.ts';
 
 // Drop a timestamped JSON + HTML report into reports/ on every run (no Grafana needed).
 import { makeHandleSummary } from '../lib/summary.ts';
@@ -8,7 +8,7 @@ export const handleSummary = makeHandleSummary('load');
 
 /** Load: ramp to the expected peak and hold — behaviour under normal traffic. */
 export const options: Options = {
-  thresholds: defaultThresholds,
+  thresholds: journeyThresholds,
   scenarios: {
     load: {
       executor: 'ramping-vus',
