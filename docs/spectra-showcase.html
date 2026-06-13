@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Spectra — Unified QA Automation Framework</title>
+<style>
+  :root {
+    --bg0: #0a0e1a;
+    --bg1: #111829;
+    --card: rgba(255, 255, 255, 0.04);
+    --border: rgba(255, 255, 255, 0.10);
+    --text: #e8eef7;
+    --muted: #97a6bd;
+    --accent: #38bdf8;   /* sky */
+    --accent2: #34d399;  /* emerald */
+    --accent3: #f472b6;  /* pink */
+    --warn: #fbbf24;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    --sans: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--sans);
+    color: var(--text);
+    background: radial-gradient(1200px 800px at 80% -10%, #1b2742 0%, transparent 55%),
+                radial-gradient(1000px 700px at -10% 110%, #15233b 0%, transparent 50%),
+                linear-gradient(160deg, var(--bg0), var(--bg1));
+    overflow: hidden;
+  }
+
+  /* progress + chrome */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    z-index: 50; transition: width .35s ease;
+  }
+  #counter {
+    position: fixed; bottom: 18px; right: 22px; z-index: 50;
+    font: 600 13px var(--mono); color: var(--muted);
+    background: var(--card); border: 1px solid var(--border);
+    padding: 6px 12px; border-radius: 999px;
+  }
+  #brand {
+    position: fixed; bottom: 18px; left: 22px; z-index: 50;
+    font: 600 13px var(--sans); color: var(--muted); letter-spacing: .3px;
+  }
+  #brand b { color: var(--text); }
+  .nav {
+    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 50; display: flex; gap: 8px;
+  }
+  .nav button {
+    width: 38px; height: 38px; border-radius: 10px; cursor: pointer;
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    font-size: 16px; transition: .15s; display: grid; place-items: center;
+  }
+  .nav button:hover { background: rgba(56,189,248,.15); border-color: var(--accent); }
+
+  /* slides */
+  .deck { height: 100%; width: 100%; }
+  .slide {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column; justify-content: center;
+    padding: 7vh 9vw; opacity: 0; transform: translateY(14px);
+    transition: opacity .4s ease, transform .4s ease;
+  }
+  .slide.active { display: flex; opacity: 1; transform: none; }
+  .kicker {
+    font: 700 13px var(--mono); letter-spacing: 2px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 14px;
+  }
+  h1 { font-size: clamp(34px, 5.2vw, 70px); line-height: 1.04; letter-spacing: -1.5px; }
+  h2 { font-size: clamp(26px, 3.6vw, 44px); line-height: 1.1; letter-spacing: -.8px; margin-bottom: 8px; }
+  .sub { color: var(--muted); font-size: clamp(15px, 1.7vw, 21px); margin-top: 18px; max-width: 60ch; line-height: 1.5; }
+  p.lead { color: var(--muted); font-size: clamp(15px,1.6vw,19px); line-height: 1.55; max-width: 70ch; }
+  .accent { color: var(--accent); }
+  .accent2 { color: var(--accent2); }
+  .pink { color: var(--accent3); }
+  .warn { color: var(--warn); }
+
+  .grid { display: grid; gap: 16px; margin-top: 26px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 900px){ .g4 { grid-template-columns: repeat(4, 1fr); } }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 22px; transition: .2s;
+  }
+  .card:hover { border-color: rgba(56,189,248,.4); transform: translateY(-3px); }
+  .card h3 { font-size: 18px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .card p { color: var(--muted); font-size: 14.5px; line-height: 1.5; }
+  .card .ico { font-size: 22px; }
+  .tag { font: 600 12px var(--mono); color: var(--accent2); }
+
+  ul.feat { margin-top: 22px; list-style: none; display: grid; gap: 14px; max-width: 75ch; }
+  ul.feat li { display: flex; gap: 14px; font-size: clamp(15px,1.6vw,18px); line-height: 1.45; }
+  ul.feat li::before { content: "▹"; color: var(--accent); font-weight: 700; }
+  ul.feat li b { color: var(--text); }
+  ul.feat li span { color: var(--muted); }
+
+  table.t { width: 100%; border-collapse: collapse; margin-top: 22px; font-size: clamp(13px,1.5vw,16px); }
+  table.t th, table.t td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  table.t th { color: var(--accent); font: 700 12px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+  table.t td:first-child { font-weight: 600; }
+  table.t td code { color: var(--accent2); }
+
+  .pipe { display: flex; align-items: stretch; gap: 0; margin-top: 30px; flex-wrap: wrap; }
+  .pipe .node {
+    flex: 1; min-width: 150px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px; text-align: center;
+  }
+  .pipe .node .big { font-size: 22px; font-weight: 700; }
+  .pipe .node small { color: var(--muted); display: block; margin-top: 6px; font-size: 13px; }
+  .pipe .arrow { display: grid; place-items: center; color: var(--accent); font-size: 26px; padding: 0 6px; }
+
+  .stats { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; margin-top: 26px; }
+  @media (min-width: 900px){ .stats { grid-template-columns: repeat(4,1fr); } }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; text-align: center; }
+  .stat .num { font-size: clamp(28px,3.4vw,42px); font-weight: 800; letter-spacing: -1px;
+               background: linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stat .lbl { color: var(--muted); font-size: 13.5px; margin-top: 8px; }
+
+  code.inline { font-family: var(--mono); background: rgba(255,255,255,.06); padding: 2px 7px; border-radius: 6px; font-size: .9em; color: var(--accent2); }
+  pre {
+    margin-top: 20px; background: #0b1322; border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px 20px; overflow-x: auto; font-family: var(--mono); font-size: clamp(12px,1.35vw,15px); line-height: 1.7;
+  }
+  pre .c { color: var(--muted); }      /* comment */
+  pre .k { color: var(--accent); }     /* command */
+  pre .v { color: var(--accent2); }    /* value */
+  .hint { margin-top: 30px; font: 500 14px var(--mono); color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+  .chip { background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; font-size: 14px; }
+  .chip b { color: var(--accent); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: center; }
+  @media (max-width: 820px){ .two, .g2, .g3 { grid-template-columns: 1fr; } }
+
+  /* print -> PDF: stack every slide as its own page */
+  @media print {
+    body { overflow: visible; background: #0a0e1a; }
+    #progress, #counter, #brand, .nav { display: none !important; }
+    .slide { display: flex !important; opacity: 1 !important; transform: none !important;
+             position: relative; inset: auto; height: 100vh; page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="brand"><b>Spectra</b> · QA Automation Framework</div>
+<div id="counter">01 / 16</div>
+
+<div class="deck">
+
+  <!-- 1 — TITLE -->
+  <section class="slide active">
+    <div class="kicker">Test Automation · Portfolio Showcase</div>
+    <h1>Spectra<br /><span class="accent">Unified QA Automation Framework</span></h1>
+    <p class="sub">One TypeScript monorepo that tests <b class="accent2">web, API, mobile, and performance</b> — built entirely on free, open-source tools, fully containerised, with live dashboards and shareable reports.</p>
+    <div class="chips">
+      <span class="chip">Playwright</span>
+      <span class="chip">k6</span>
+      <span class="chip">Maestro</span>
+      <span class="chip">Docker</span>
+      <span class="chip">Grafana</span>
+      <span class="chip">TypeScript</span>
+    </div>
+    <div class="hint">Alan Chan · use → ← / Space to navigate · press <b>F</b> for fullscreen</div>
+  </section>
+
+  <!-- 2 — THE IDEA -->
+  <section class="slide">
+    <div class="kicker">The Idea</div>
+    <h2>Four kinds of testing. <span class="accent">One framework.</span></h2>
+    <p class="lead">Most teams stitch together separate, often paid tools for each test type. Spectra unifies them under a single monorepo, a single config model, and a single reporting story — at <b class="accent2">zero licensing cost</b>.</p>
+    <ul class="feat">
+      <li><b>Consistent&nbsp;</b><span>— the same env/system switching and data factories across every layer.</span></li>
+      <li><b>Portable&nbsp;</b><span>— everything runs in Docker; no machine-specific tool sprawl.</span></li>
+      <li><b>Observable&nbsp;</b><span>— functional results in Allure, performance in live Grafana + offline reports.</span></li>
+      <li><b>CI-ready&nbsp;</b><span>— thresholds and exit codes gate the GitHub Actions pipeline.</span></li>
+    </ul>
+  </section>
+
+  <!-- 3 — STACK -->
+  <section class="slide">
+    <div class="kicker">The Stack</div>
+    <h2>Every layer, a best-in-class OSS tool</h2>
+    <table class="t">
+      <thead><tr><th>Layer</th><th>Tool</th><th>Style</th></tr></thead>
+      <tbody>
+        <tr><td>Web E2E</td><td>Playwright + playwright-bdd</td><td>Gherkin <code>.feature</code></td></tr>
+        <tr><td>API</td><td>Playwright APIRequestContext</td><td>Gherkin <code>.feature</code></td></tr>
+        <tr><td>Mobile (iOS + Android)</td><td>Maestro</td><td>YAML flows</td></tr>
+        <tr><td>Performance</td><td>k6</td><td>TypeScript scenarios</td></tr>
+        <tr><td>Reporting — functional</td><td>Allure</td><td>native + JUnit</td></tr>
+        <tr><td>Reporting — performance</td><td>Grafana + InfluxDB</td><td>time-series</td></tr>
+      </tbody>
+    </table>
+    <p class="sub">Orchestrated with <b>pnpm workspaces + Turborepo</b>, written in <b>TypeScript</b>, run in <b>GitHub Actions</b>.</p>
+  </section>
+
+  <!-- 4 — ARCHITECTURE -->
+  <section class="slide">
+    <div class="kicker">Architecture</div>
+    <h2>A clean monorepo</h2>
+    <div class="grid g4">
+      <div class="card"><h3><span class="ico">🌐</span>@spectra/web</h3><p>Playwright + BDD. Gherkin features, step definitions, page objects, API request specs.</p></div>
+      <div class="card"><h3><span class="ico">📱</span>@spectra/mobile</h3><p>Maestro YAML flows for iOS &amp; Android, with reusable sub-flows. Runs on an emulator.</p></div>
+      <div class="card"><h3><span class="ico">⚡</span>@spectra/performance</h3><p>k6 scenarios (smoke/load/stress/breakpoint/soak), thresholds, Docker + Grafana.</p></div>
+      <div class="card"><h3><span class="ico">🧩</span>@spectra/shared</h3><p>One config resolver, Faker data factories, and types shared across every package.</p></div>
+    </div>
+    <p class="sub">Switch target with env vars: <code class="inline">SYSTEM</code>, <code class="inline">ENV</code>, <code class="inline">PLATFORM</code> — one codebase, many environments.</p>
+  </section>
+
+  <!-- 5 — FUNCTIONAL -->
+  <section class="slide">
+    <div class="kicker">Functional Testing</div>
+    <h2>Readable specs, real selectors</h2>
+    <div class="two">
+      <div>
+        <ul class="feat">
+          <li><b>BDD/Gherkin&nbsp;</b><span>— behaviour written in plain English, reused step lines.</span></li>
+          <li><b>Page Object Model&nbsp;</b><span>— selectors live in one place, never inline.</span></li>
+          <li><b>API + UI, one runner&nbsp;</b><span>— Playwright drives both, sharing fixtures.</span></li>
+          <li><b>Mobile via Maestro&nbsp;</b><span>— resilient flows, real device-ids, iOS &amp; Android.</span></li>
+        </ul>
+      </div>
+      <pre><span class="c"># Gherkin — the test reads like a requirement</span>
+<span class="k">Scenario:</span> a shopper logs in
+  <span class="v">Given</span> the user is on the login page
+  <span class="v">When</span>  they sign in as a standard user
+  <span class="v">Then</span>  the products catalogue is shown</pre>
+    </div>
+  </section>
+
+  <!-- 6 — PERF INTRO -->
+  <section class="slide">
+    <div class="kicker">Performance Engineering</div>
+    <h2>Five test types — each answers a different question</h2>
+    <table class="t">
+      <thead><tr><th>Type</th><th>Profile</th><th>Question it answers</th></tr></thead>
+      <tbody>
+        <tr><td>Smoke</td><td>1 VU, 1 iteration</td><td>Does it work at all?</td></tr>
+        <tr><td>Load</td><td>ramp to expected peak</td><td>OK under normal traffic?</td></tr>
+        <tr><td>Stress</td><td>push past peak</td><td>Where does it degrade?</td></tr>
+        <tr><td>Breakpoint</td><td>rising rate until SLA breaks</td><td>What's the capacity ceiling?</td></tr>
+        <tr><td>Soak</td><td>steady load held for hours</td><td>Does it stay healthy over time? (leaks)</td></tr>
+      </tbody>
+    </table>
+    <p class="sub"><b>Thresholds</b> (e.g. <code class="inline">p(95)&lt;500ms</code>, <code class="inline">error&nbsp;rate&lt;1%</code>) are the pass/fail gate — a breach makes k6 exit non-zero and fails CI.</p>
+  </section>
+
+  <!-- 7 — DOCKERISED -->
+  <section class="slide">
+    <div class="kicker">Containerised</div>
+    <h2>Run anything — install almost nothing</h2>
+    <p class="lead">k6 runs as a container, so a contributor needs only Docker — no native k6, no Node toolchain to <i>execute</i> tests. Two of the commands are "dry runs" that never touch the target.</p>
+    <pre><span class="c"># dry run — validates the script, sends 0 requests</span>
+<span class="k">pnpm</span> --filter @spectra/performance docker:inspect
+
+<span class="c"># minimal real run — 1 request</span>
+<span class="k">pnpm</span> --filter @spectra/performance docker:smoke
+
+<span class="c"># full load test, streamed live to Grafana</span>
+<span class="k">pnpm</span> --filter @spectra/performance docker:load:mock</pre>
+  </section>
+
+  <!-- 8 — SAFE LOAD / MOCK -->
+  <section class="slide">
+    <div class="kicker">Engineering Decision</div>
+    <h2>Never load-test someone else's API</h2>
+    <div class="two">
+      <div>
+        <p class="lead">Pointing thousands of requests at a public/demo API is abuse. So the stack ships a tiny <b class="accent2">local mock</b> (nginx) that mirrors the endpoints under test.</p>
+        <ul class="feat">
+          <li><b>Real curves&nbsp;</b><span>— generate genuine load shapes locally.</span></li>
+          <li><b>Zero blast radius&nbsp;</b><span>— nothing leaves your machine.</span></li>
+          <li><b>One flag&nbsp;</b><span>— <code class="inline">BASE_URL</code> override points k6 anywhere.</span></li>
+        </ul>
+      </div>
+      <pre><span class="c"># k6 → local mock, not a public API</span>
+<span class="k">docker compose run</span> --rm \
+  -e <span class="v">BASE_URL=http://mockapi</span> \
+  k6 run src/scenarios/load.ts</pre>
+    </div>
+  </section>
+
+  <!-- 9 — OBSERVABILITY -->
+  <section class="slide">
+    <div class="kicker">Observability</div>
+    <h2>Live dashboards, the right way</h2>
+    <div class="pipe">
+      <div class="node"><div class="big accent">k6</div><small>generates load &amp; measures every request</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="big">InfluxDB</div><small>stores the time-series metrics</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="big accent2">Grafana</div><small>live charts: p95, RPS, VUs, errors</small></div>
+    </div>
+    <p class="sub">The datasource <b>and</b> dashboard are <b>auto-provisioned</b> — no manual import. Open <code class="inline">localhost:3000/d/k6-perf</code> and watch curves build in real time.</p>
+  </section>
+
+  <!-- 10 — REPORTING -->
+  <section class="slide">
+    <div class="kicker">Reporting</div>
+    <h2>Three ways to read results</h2>
+    <div class="grid g3">
+      <div class="card"><h3><span class="ico">🖥️</span>Terminal</h3><p>Instant text summary with threshold pass/fail at the end of every run.</p></div>
+      <div class="card"><h3><span class="ico">📄</span>Offline report</h3><p>Each run drops <span class="tag">report.json</span> + <span class="tag">report.html</span> into its own timestamped folder — open in any browser, share as a file.</p></div>
+      <div class="card"><h3><span class="ico">📈</span>Live Grafana</h3><p>Real-time time-series for demos and capacity analysis.</p></div>
+    </div>
+    <p class="sub">The HTML report is generated by k6's own <code class="inline">handleSummary()</code> hook — real measured data, no hand-editing.</p>
+  </section>
+
+  <!-- 11 — CHALLENGES -->
+  <section class="slide">
+    <div class="kicker">Problems I Solved</div>
+    <h2>The interesting engineering</h2>
+    <div class="grid g2">
+      <div class="card"><h3 class="accent">TypeScript on k6 v2</h3><p>Scenarios failed to load — k6's loader won't auto-resolve extensions. Fixed with explicit <code class="inline">.ts</code> imports + <code class="inline">allowImportingTsExtensions</code>.</p></div>
+      <div class="card"><h3 class="accent">Container networking</h3><p>k6 → InfluxDB had to target the <i>peer container</i> hostname, not localhost; mounted the package so relative imports resolve.</p></div>
+      <div class="card"><h3 class="accent">Zero-touch dashboards</h3><p>The popular community dashboard silently wouldn't bind. Replaced it with an auto-provisioned datasource + dashboard.</p></div>
+      <div class="card"><h3 class="accent">Per-run report folders</h3><p>k6 can't <code class="inline">mkdir</code> at summary time, so an entrypoint wrapper creates <code class="inline">reports/&lt;scenario&gt;-&lt;ts&gt;/</code> first.</p></div>
+    </div>
+  </section>
+
+  <!-- 12 — RESULTS -->
+  <section class="slide">
+    <div class="kicker">Results</div>
+    <h2>Verified, end to end</h2>
+    <div class="stats">
+      <div class="stat"><div class="num">7 / 7</div><div class="lbl">functional scenarios green<br/>(web · API · mobile)</div></div>
+      <div class="stat"><div class="num">3,620</div><div class="lbl">HTTP requests in a<br/>20-VU / 2-min load run</div></div>
+      <div class="stat"><div class="num">0%</div><div class="lbl">error rate<br/>thresholds passed</div></div>
+      <div class="stat"><div class="num">100%</div><div class="lbl">containerised<br/>(Docker-only setup)</div></div>
+    </div>
+    <p class="sub">Performance run executed against the bundled local mock target — real load shape, reproducible on any machine with Docker.</p>
+  </section>
+
+  <!-- 13 — SKILLS -->
+  <section class="slide">
+    <div class="kicker">Skills Demonstrated</div>
+    <h2>What this project shows</h2>
+    <div class="chips">
+      <span class="chip"><b>E2E</b> Playwright</span>
+      <span class="chip"><b>BDD</b> Gherkin / Cucumber</span>
+      <span class="chip"><b>API</b> testing</span>
+      <span class="chip"><b>Mobile</b> Maestro (iOS/Android)</span>
+      <span class="chip"><b>Perf</b> k6 · load/stress/soak</span>
+      <span class="chip"><b>Docker</b> compose</span>
+      <span class="chip"><b>Observability</b> Grafana · InfluxDB</span>
+      <span class="chip"><b>CI/CD</b> GitHub Actions</span>
+      <span class="chip"><b>TypeScript</b></span>
+      <span class="chip"><b>Monorepo</b> pnpm · Turborepo</span>
+      <span class="chip"><b>Debugging</b> infra &amp; tooling</span>
+    </div>
+    <p class="sub">Breadth across the testing pyramid <b>plus</b> the DevOps glue to run it all reproducibly — and the troubleshooting to make it actually work.</p>
+  </section>
+
+  <!-- 14 — DEMO SCRIPT -->
+  <section class="slide">
+    <div class="kicker">Live Demo (60 seconds)</div>
+    <h2>How I'd show it</h2>
+    <ul class="feat">
+      <li><b>1 ·&nbsp;</b><span>Bring the stack up — <code class="inline">grafana:up</code> (InfluxDB + Grafana + mock).</span></li>
+      <li><b>2 ·&nbsp;</b><span>Dry-run a scenario — <code class="inline">docker:inspect</code> proves it validates with zero traffic.</span></li>
+      <li><b>3 ·&nbsp;</b><span>Fire a load test — <code class="inline">docker:load:mock</code> and watch curves build at <code class="inline">localhost:3000</code>.</span></li>
+      <li><b>4 ·&nbsp;</b><span>Open the offline <code class="inline">report.html</code> from <code class="inline">reports/</code> — a shareable artifact.</span></li>
+    </ul>
+  </section>
+
+  <!-- 15 — WHY OSS -->
+  <section class="slide">
+    <div class="kicker">The Philosophy</div>
+    <h2>Enterprise capability, <span class="accent2">$0 in licences</span></h2>
+    <p class="lead">Everything here — Playwright, Maestro, k6, Grafana, InfluxDB, Allure, Docker — is free and open source. Spectra proves you can stand up a complete, multi-layer QA platform with live observability without a single paid tool.</p>
+    <div class="grid g3" style="margin-top:30px">
+      <div class="card"><h3>Reproducible</h3><p>Clone, <code class="inline">docker compose up</code>, run. Same result on every machine.</p></div>
+      <div class="card"><h3>Extensible</h3><p>Add a scenario or feature file — patterns are shared and documented.</p></div>
+      <div class="card"><h3>Owned</h3><p>No vendor lock-in, no per-seat cost, full control of the data.</p></div>
+    </div>
+  </section>
+
+  <!-- 16 — CLOSE -->
+  <section class="slide">
+    <div class="kicker">Thank you</div>
+    <h1>Let's talk <span class="accent">testing.</span></h1>
+    <p class="sub">Spectra — a unified, containerised, fully open-source QA automation framework spanning web, API, mobile, and performance.</p>
+    <div class="chips">
+      <span class="chip">Alan Chan</span>
+      <span class="chip">dev.alanckl@gmail.com</span>
+      <span class="chip accent">Built with Playwright · k6 · Maestro · Docker · Grafana</span>
+    </div>
+    <div class="hint">Tip: press <b>P</b> → your browser's Print dialog → "Save as PDF" to export this deck.</div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prev" aria-label="Previous">‹</button>
+  <button id="next" aria-label="Next">›</button>
+</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const counter = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+  let i = Math.max(0, slides.findIndex(s => s.classList.contains('active')));
+
+  function pad(n){ return String(n).padStart(2, '0'); }
+  function show(n){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+    counter.textContent = pad(i + 1) + ' / ' + pad(slides.length);
+    progress.style.width = ((i) / (slides.length - 1) * 100) + '%';
+    if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
+  }
+  const next = () => show(i + 1);
+  const prev = () => show(i - 1);
+
+  document.getElementById('next').onclick = next;
+  document.getElementById('prev').onclick = prev;
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft','PageUp'].includes(e.key)) { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key.toLowerCase() === 'f') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
+    else if (e.key.toLowerCase() === 'p') { window.print(); }
+  });
+
+  // click right/left third of screen to navigate (skip buttons/links)
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('button, a')) return;
+    (e.clientX > innerWidth * 0.62) ? next() : (e.clientX < innerWidth * 0.38 ? prev() : null);
+  });
+
+  // touch swipe
+  let tx = 0;
+  addEventListener('touchstart', e => tx = e.changedTouches[0].clientX, {passive:true});
+  addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) (dx < 0 ? next() : prev());
+  }, {passive:true});
+
+  // deep-link via hash (#3) on load
+  const start = parseInt(location.hash.slice(1), 10);
+  show(Number.isFinite(start) && start > 0 ? start - 1 : 0);
+</script>
+</body>
+</html>
