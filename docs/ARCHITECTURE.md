@@ -280,6 +280,53 @@ its own assertion. Same idea as reusing a web page object.
 - **Run-time:** `maestro test … flows/` reads `config.yaml` for execution order, then
   runs each flow top-to-bottom, inlining every `runFlow`.
 
+### Parallel execution (multiple devices)
+
+There are **two layers** of parallelism — don't conflate them:
+
+| Layer | Splits work across… | Mechanism |
+| --- | --- | --- |
+| **Device sharding** | N devices on **one machine** | Maestro flags |
+| **Job matrix** | N **CI runners** (1 emulator each) | GitHub Actions `matrix` |
+
+Maestro's sharding only sees devices connected to the *same* host; to scale across
+separate CI runners you use a job matrix.
+
+**Maestro flags** (verified on 2.6.0): `--shard-split N` splits the flows *evenly* across
+N connected devices (faster); `--shard-all N` runs the *whole* suite on *each* device
+(cross-device coverage); `--device "id1,id2"` pins specific devices. Flows must be
+**independent** to shard safely — Spectra's are (every flow self-launches via a subflow).
+
+**Local (2 emulators):** both instances of one AVD must be `-read-only` (a writable
+instance locks the AVD exclusively), on distinct ports:
+
+```powershell
+emulator -avd spectra_pixel -read-only -gpu auto -port 5554   # terminal 1
+emulator -avd spectra_pixel -read-only -gpu auto -port 5556   # terminal 2
+adb devices                                                   # both show "device"
+pnpm --filter @spectra/mobile test:parallel                   # = maestro --shard-split 2
+```
+`test:parallel` (split, for speed) and `test:all-devices` (`--shard-all`, for coverage)
+live in `packages/mobile/package.json`.
+
+**CI (`mobile-tests.yml`):** the `android` job is a **tag matrix** —
+`matrix.shard: [smoke, login, products]`. Each runner boots its own emulator and runs one
+tag group (`--include-tags=${{ matrix.shard }}`); free runners fit ~1 emulator, so the
+matrix *is* the parallelism (Maestro `--shard-split` inside one job buys nothing there).
+Two rules make the merge work, both because `report.yml` merges with `merge-multiple`
+(same-named files overwrite):
+1. unique JUnit per shard → `--output allure-results/mobile-results-${{ matrix.shard }}.xml`
+2. unique artifact per shard → `name: allure-results-mobile-android-${{ matrix.shard }}`
+
+`report.yml` needs no change — its `allure-results-*` + `merge-multiple` already gathers
+every shard, and `needs: [mobile]` waits for all matrix legs.
+
+> ⚠️ `--exclude-tags=negative` is currently applied (local scripts + CI login shard) to
+> **quarantine the broken `login-invalid` flow** — its assertion (`loginBtn` stays
+> visible) is wrong for this app build, which returns to the catalog after a bad login.
+> Remove the flag once the negative test is rewritten to check auth state (menu shows
+> `Log In` / no `Log Out`) rather than screen.
+
 ---
 
 ## 5. Performance (k6) — file linkage

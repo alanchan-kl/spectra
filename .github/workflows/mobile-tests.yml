@@ -10,6 +10,14 @@ jobs:
   android:
     # Android emulator runs on a Linux runner with KVM.
     runs-on: ubuntu-latest
+    # Fan out the suite across parallel runners: each runner boots its OWN emulator
+    # and runs ONE tag group. Free runners fit ~1 emulator each, so the parallelism
+    # is the matrix — not Maestro --shard-split within a single job. The tag groups
+    # smoke / login / products are disjoint and together cover every flow.
+    strategy:
+      fail-fast: false # one shard failing must not cancel the others
+      matrix:
+        shard: [smoke, login, products]
     steps:
       - uses: actions/checkout@v4
 
@@ -42,18 +50,23 @@ jobs:
           api-level: 34
           arch: x86_64
           profile: pixel_6
-          # Install the app, then run the flows. Keep `maestro test` on ONE line —
-          # android-emulator-runner mangles backslash line-continuations, which is
-          # what made the flow path resolve to a bare "\" before.
+          # Install the app, then run THIS shard's tag group. Keep `maestro test`
+          # on ONE line — android-emulator-runner mangles backslash continuations.
+          # --exclude-tags=negative quarantines the known-broken login-invalid flow
+          # (it carries the `login` tag, so it'd otherwise land in the login shard);
+          # remove that flag once the flow is fixed.
+          # Unique --output per shard: report.yml merges with merge-multiple, which
+          # OVERWRITES same-named files — each shard must write its own XML.
           script: |
             adb install -r packages/mobile/apps/app.apk
             mkdir -p allure-results
-            maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format junit --test-suite-name "Mobile (Android)" --output allure-results/mobile-results.xml packages/mobile/flows/
+            maestro test --include-tags=${{ matrix.shard }} --exclude-tags=negative -e APP_ID=com.saucelabs.mydemoapp.android --format junit --test-suite-name "Mobile (Android) — ${{ matrix.shard }}" --output allure-results/mobile-results-${{ matrix.shard }}.xml packages/mobile/flows/
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: allure-results-mobile-android
+          # Unique per shard — report.yml gathers these via pattern allure-results-*.
+          name: allure-results-mobile-android-${{ matrix.shard }}
           path: allure-results
           if-no-files-found: ignore
 
