@@ -13,6 +13,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: write # delete the stale github-pages artifact on re-run (see report job)
 
 jobs:
   # ---- fan-out: the three suites run in parallel ------------------------------
@@ -76,6 +77,21 @@ jobs:
 
       - name: Generate unified Allure report
         run: pnpm report:generate
+
+      # Re-running a job re-runs this report job, which uploads a SECOND
+      # "github-pages" artifact while the prior attempt's copy still exists →
+      # actions/deploy-pages fails ("Multiple artifacts named github-pages").
+      # Delete any stale copy first so deploy sees exactly one. No-op on a fresh run.
+      - name: Remove stale github-pages artifact (re-run safety)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" \
+            --jq '.artifacts[] | select(.name=="github-pages") | .id' \
+          | while read -r id; do
+              gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/$id" || true
+            done
 
       - uses: actions/upload-pages-artifact@v3
         with:
