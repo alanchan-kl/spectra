@@ -26,3 +26,10 @@ Then(
     await expect(loginPage.errorMessage).toContainText(text, { ignoreCase: true });
   },
 );
+
+// ⚠️ TEMPORARY — supports the @demo-fail scenario in login.feature. Asserting the
+// products title against a wrong value forces a clean FAILED result for verifying the
+// failure / Categories reporting path. Remove together with the @demo-fail scenario.
+Then('the products title should be {string}', async ({ inventoryPage }, expected: string) => {
+  await expect(inventoryPage.title).toHaveText(expected);
+});
