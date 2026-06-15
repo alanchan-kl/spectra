@@ -631,5 +631,54 @@ set SYSTEM=system-b && set ENV=staging && pnpm test:web
 
 ---
 
+## 11. Reporting: history/trend & same-run reruns
+
+The functional suites (web/API/mobile) publish **one unified Allure report** to GitHub
+Pages via `report.yml`: each suite uploads `allure-results-*`, the `report` job merges
+them (`merge-multiple`) and runs `pnpm report:generate` (`allure generate`).
+
+### Trend/history — why it needs seeding
+
+Allure's **Trend** graphs are built from a `history/` folder that must be **carried over
+from the previous report**: you copy the last report's `allure-report/history/` into the
+new `allure-results/history/` *before* `allure generate`, and Allure extends the trend.
+Generate from a blank results dir and the trend only ever has one point — it looks empty.
+
+`report.yml` seeds it by fetching the previous `history/` from the **currently-published
+Pages site** before generating:
+
+```
+gh api repos/<owner>/<repo> pages → html_url
+   └─ curl <url>/history/{history,history-trend,duration-trend,retry-trend,categories-trend}.json
+        └─ into allure-results/history/   →  allure generate extends the trend
+```
+
+It's `continue-on-error` so the very first run (nothing published yet) stays green. The
+official `actions/deploy-pages` flow is untouched — we add history *into* it, rather than
+regressing to a `gh-pages` branch.
+
+### Reruns of failed tests — handled *within the run*
+
+Failed tests re-run **inside the same CI run**, so every attempt lands in one
+`allure-results` set and Allure consolidates them natively via **Retries** (latest attempt
+= final status, the test is counted **once**, and the build contributes exactly **one**
+trend point). This is why there's no "partial report / only-the-latest-execution" problem —
+we never do a separate partial rerun that would need merging back.
+
+| Layer | Same-run rerun mechanism | Shown in Allure |
+| --- | --- | --- |
+| Web / API | Playwright `retries` (`playwright.config.ts` → `config.retries`: dev 0 / staging 1 / prod 2) | ✅ Retries tab + **flaky** badge per attempt |
+| Mobile | Maestro re-runs a failed flow by default (`disableRetries=false`) | ⚠️ JUnit carries **final status only** — no per-attempt tab |
+| Performance | n/a | n/a |
+
+So "rerun only the failed test, not the whole suite" is already true: Playwright re-runs
+just the failing test, inline. With history seeded (above), the **flaky/retries trend**
+then accumulates across builds — the real QE signal.
+
+> For coarser, free reruns you can also use GitHub's **Re-run failed jobs** — on the mobile
+> **tag matrix** that re-runs only the failed tag-group (e.g. just `login`).
+
+---
+
 > See also: `README.md` (full setup + perf workflow) and the `/spectra` playbook for
 > environment provisioning and CI details.

@@ -57,6 +57,23 @@ jobs:
           path: allure-results
           merge-multiple: true
 
+      # Allure's trend graphs come from a history/ folder carried over from the
+      # PREVIOUS report. Seed it from the currently-published Pages site before
+      # generating, so each run extends the trend instead of starting blank.
+      # First run (Pages not yet deployed) 404s → continue-on-error keeps it green.
+      - name: Restore Allure history (enables trend graphs)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p allure-results/history
+          url=$(gh api "repos/${{ github.repository }}/pages" --jq .html_url 2>/dev/null || true)
+          if [ -n "$url" ]; then
+            for f in history.json history-trend.json duration-trend.json retry-trend.json categories-trend.json; do
+              curl -fsSL "${url%/}/history/$f" -o "allure-results/history/$f" || true
+            done
+          fi
+
       - name: Generate unified Allure report
         run: pnpm report:generate
 
