@@ -1,6 +1,6 @@
 import { test as base, createBdd } from 'playwright-bdd';
 import type { APIResponse } from '@playwright/test';
-import { feature, story, epic, severity, owner } from 'allure-js-commons';
+import { feature, story } from 'allure-js-commons';
 import { LoginPage } from '../pages/login.page';
 import { InventoryPage } from '../pages/inventory.page';
 import { PostsClient } from '../api/posts.client';
@@ -47,18 +47,6 @@ export const test = base.extend<SpectraFixtures>({
       // Gherkin Feature → Allure feature, Scenario → story (drives the Behaviors tab).
       await feature(tp.length >= 2 ? tp[tp.length - 2] : 'Unknown');
       await story(testInfo.title);
-      // Optional convention tags → Allure labels, e.g.
-      //   @epic:Authentication @severity:critical @owner:alan
-      // (Gherkin tags can't contain spaces — use single words.) Allure's native
-      // @allure.label.* tags do NOT work through playwright-bdd, so we map them here.
-      for (const t of testInfo.tags) {
-        const [key, ...rest] = t.replace(/^@/, '').split(':');
-        const value = rest.join(':');
-        if (!value) continue;
-        if (key === 'epic') await epic(value);
-        else if (key === 'severity') await severity(value);
-        else if (key === 'owner') await owner(value);
-      }
       await use();
     },
     { auto: true },

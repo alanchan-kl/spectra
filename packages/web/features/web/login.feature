@@ -1,4 +1,4 @@
-@web @system-a @epic:Authentication @owner:alanchan
+@web @system-a
 Feature: Login
   As a shopper
   I want to sign in to the storefront
@@ -7,12 +7,11 @@ Feature: Login
   Background:
     Given I am on the login page
 
-  @smoke @severity:critical
+  @smoke
   Scenario: Successful login with valid credentials
     When I log in with valid credentials
     Then I should see the products page
 
-  @severity:normal @owner:unknown
   Scenario: Login is rejected for a locked-out user
     When I log in as "locked_out_user"
     Then I should see an error message containing "locked out"
