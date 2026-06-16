@@ -26,6 +26,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: config.retries,
   timeout: config.timeout,
+  // Writes allure-results/environment.properties from getConfig() (Environment widget).
+  globalSetup: './fixtures/global-setup.ts',
   reporter: [
     ['list'],
     ['allure-playwright', { resultsDir: '../../allure-results' }],

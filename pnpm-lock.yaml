@@ -63,6 +63,9 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.21
+      allure-js-commons:
+        specifier: ^3.0.0
+        version: 3.10.0(allure-playwright@3.10.0(@playwright/test@1.60.0))
       allure-playwright:
         specifier: ^3.0.0
         version: 3.10.0(@playwright/test@1.60.0)

@@ -75,6 +75,18 @@ jobs:
             done
           fi
 
+      # The config-derived keys (SYSTEM/ENV/URLs/app) are written by the web/api suites'
+      # globalSetup from getConfig() — no hardcoded values — and arrive via the merge
+      # above. Append only the CI run provenance, which is GitHub context, not config.
+      - name: Append run provenance to Allure environment
+        run: |
+          mkdir -p allure-results
+          cat >> allure-results/environment.properties <<EOF
+          Commit=${{ github.sha }}
+          Branch=${{ github.ref_name }}
+          CI.Run=#${{ github.run_number }}
+          EOF
+
       - name: Generate unified Allure report
         run: pnpm report:generate
 
