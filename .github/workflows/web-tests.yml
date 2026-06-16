@@ -36,3 +36,10 @@ jobs:
           name: allure-results-web-${{ matrix.system }}-${{ matrix.env }}
           path: allure-results
           if-no-files-found: ignore
+      # Native Playwright HTML report (self-contained, embeds traces) for tracing back runs.
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report-web-${{ matrix.system }}-${{ matrix.env }}
+          path: packages/web/playwright-report
+          if-no-files-found: ignore

@@ -31,6 +31,10 @@ export default defineConfig({
   reporter: [
     ['list'],
     ['allure-playwright', { resultsDir: '../../allure-results' }],
+    // Native Playwright report — self-contained (embeds traces/screenshots) so it can be
+    // archived as a CI artifact and reopened later to trace back a run. View locally with
+    // `pnpm --filter @spectra/web exec playwright show-report`.
+    ['html', { open: 'never', outputFolder: 'playwright-report' }],
   ],
   projects: [
     {
@@ -49,6 +53,8 @@ export default defineConfig({
       testDir: apiTestDir,
       use: {
         baseURL: config.apiBaseUrl,
+        // Trace the API request/response on failure (no browser) — viewable in the report.
+        trace: 'retain-on-failure',
       },
     },
   ],
