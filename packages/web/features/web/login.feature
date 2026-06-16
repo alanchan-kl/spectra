@@ -12,7 +12,7 @@ Feature: Login
     When I log in with valid credentials
     Then I should see the products page
 
-  @severity:normal @owner:alan
+  @severity:normal @owner:unknown
   Scenario: Login is rejected for a locked-out user
     When I log in as "locked_out_user"
     Then I should see an error message containing "locked out"
