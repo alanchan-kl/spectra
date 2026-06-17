@@ -87,6 +87,27 @@ jobs:
           CI.Run=#${{ github.run_number }}
           EOF
 
+      # Executor metadata → the "Executors" widget, and makes history/trend points identify
+      # their CI run (instead of "unknown") and link back to it. buildOrder orders the trend.
+      - name: Write Allure executor metadata (traceability)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p allure-results
+          report_url=$(gh api "repos/${{ github.repository }}/pages" --jq .html_url 2>/dev/null || echo "")
+          cat > allure-results/executor.json <<EOF
+          {
+            "name": "GitHub Actions",
+            "type": "github",
+            "url": "${{ github.server_url }}/${{ github.repository }}",
+            "buildName": "E2E #${{ github.run_number }}",
+            "buildOrder": ${{ github.run_number }},
+            "buildUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "reportName": "Spectra E2E",
+            "reportUrl": "${report_url}"
+          }
+          EOF
+
       - name: Generate unified Allure report
         run: pnpm report:generate
 
