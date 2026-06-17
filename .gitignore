@@ -11,12 +11,14 @@ dist/
 
 # Test reports & artifacts
 allure-results/
+allure-results-*/
 allure-report/
 playwright-report/
 test-results/
 blob-report/
 .last-run.json
 screenshots/
+site/
 packages/performance/results/
 packages/performance/summary.html
 packages/mobile/**/report/

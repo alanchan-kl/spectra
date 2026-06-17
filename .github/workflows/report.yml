@@ -1,19 +1,25 @@
-name: E2E Suite + Unified Report
+name: E2E Suite + Reports
 
-# Fan-out / fan-in: run the web, API, and mobile suites in PARALLEL (each is a
-# reusable workflow), then merge all their Allure results into ONE report and
-# publish it to GitHub Pages. Enable Pages (Settings → Pages → GitHub Actions)
-# for the deploy step to work.
+# Fan-out / fan-in: run web, API, and mobile suites in PARALLEL (each a reusable
+# workflow), then build TWO Allure reports — Web+API (rich Playwright/Gherkin) and Mobile
+# (flat Maestro/JUnit) — and publish them to ONE GitHub Pages site under /web-api/ and
+# /mobile/, with a landing page at /. Enable Pages (Settings → Pages → GitHub Actions).
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 3 * * *" # nightly 03:00 UTC — all suites + report in one run
+    - cron: "0 3 * * *" # nightly 03:00 UTC — all suites + reports in one run
 
 permissions:
   contents: read
   pages: write
   id-token: write
   actions: write # delete the stale github-pages artifact on re-run (see report job)
+
+# Serialize Pages deploys so the nightly cron and manual dispatches never collide
+# (overlapping deploys queue/stick on the single github-pages environment).
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   # ---- fan-out: the three suites run in parallel ------------------------------
@@ -27,10 +33,10 @@ jobs:
     uses: ./.github/workflows/mobile-tests.yml
     secrets: inherit
 
-  # ---- fan-in: merge every suite's results into one report -------------------
+  # ---- fan-in: build TWO reports (web+api, mobile) and deploy them together ---
   report:
     needs: [web, api, mobile]
-    if: ${{ !cancelled() }} # build the report even if a suite failed
+    if: ${{ !cancelled() }} # build the reports even if a suite failed
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -46,75 +52,142 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-
       - run: pnpm install --frozen-lockfile
 
-      # Same-run artifacts from the reusable suite workflows. The pattern grabs
-      # web + API + mobile JUnit but NOT maestro-debug-android (screenshots).
-      - name: Gather all suite results
+      # Split the suite artifacts into TWO result sets — one per report. (download-artifact
+      # is a no-op if a suite produced nothing, e.g. it failed before writing results.)
+      - name: Gather Web results
         uses: actions/download-artifact@v4
         with:
-          pattern: allure-results-*
-          path: allure-results
+          pattern: allure-results-web-*
+          path: allure-results-webapi
+          merge-multiple: true
+      - name: Gather API results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-api-*
+          path: allure-results-webapi
+          merge-multiple: true
+      - name: Gather Mobile results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-mobile-*
+          path: allure-results-mobile
           merge-multiple: true
 
-      # Allure's trend graphs come from a history/ folder carried over from the
-      # PREVIOUS report. Seed it from the currently-published Pages site before
-      # generating, so each run extends the trend instead of starting blank.
-      # First run (Pages not yet deployed) 404s → continue-on-error keeps it green.
-      - name: Restore Allure history (enables trend graphs)
+      # Published Pages root. The two reports live at <url>/web-api/ and <url>/mobile/.
+      - name: Resolve Pages URL
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p allure-results/history
-          url=$(gh api "repos/${{ github.repository }}/pages" --jq .html_url 2>/dev/null || true)
-          if [ -n "$url" ]; then
-            for f in history.json history-trend.json duration-trend.json retry-trend.json categories-trend.json; do
-              curl -fsSL "${url%/}/history/$f" -o "allure-results/history/$f" || true
-            done
-          fi
+          url=$(gh api "repos/${{ github.repository }}/pages" --jq .html_url 2>/dev/null || echo "")
+          echo "PAGES_URL=${url%/}" >> "$GITHUB_ENV"
 
-      # The config-derived keys (SYSTEM/ENV/URLs/app) are written by the web/api suites'
-      # globalSetup from getConfig() — no hardcoded values — and arrive via the merge
-      # above. Append only the CI run provenance, which is GitHub context, not config.
-      - name: Append run provenance to Allure environment
+      # Seed each report's Allure history from its OWN subpath on the live site, so each
+      # Trend extends independently. First run (nothing published) 404s → ignored.
+      - name: Seed Allure history (both reports)
+        continue-on-error: true
         run: |
-          mkdir -p allure-results
-          cat >> allure-results/environment.properties <<EOF
+          seed() {
+            mkdir -p "$1/history"
+            [ -n "$PAGES_URL" ] || return 0
+            for f in history.json history-trend.json duration-trend.json retry-trend.json categories-trend.json; do
+              curl -fsSL "$PAGES_URL/$2/history/$f" -o "$1/history/$f" || true
+            done
+          }
+          seed allure-results-webapi web-api
+          seed allure-results-mobile mobile
+
+      # Web+API metadata: append run provenance to the environment.properties written by the
+      # web/api globalSetup (from getConfig); write the executor (build link + reportUrl).
+      - name: Web+API report metadata
+        run: |
+          mkdir -p allure-results-webapi
+          cat >> allure-results-webapi/environment.properties <<EOF
           Commit=${{ github.sha }}
           Branch=${{ github.ref_name }}
           CI.Run=#${{ github.run_number }}
           EOF
-
-      # Executor metadata → the "Executors" widget, and makes history/trend points identify
-      # their CI run (instead of "unknown") and link back to it. buildOrder orders the trend.
-      - name: Write Allure executor metadata (traceability)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p allure-results
-          report_url=$(gh api "repos/${{ github.repository }}/pages" --jq .html_url 2>/dev/null || echo "")
-          cat > allure-results/executor.json <<EOF
+          cat > allure-results-webapi/executor.json <<EOF
           {
-            "name": "GitHub Actions",
-            "type": "github",
+            "name": "GitHub Actions", "type": "github",
             "url": "${{ github.server_url }}/${{ github.repository }}",
-            "buildName": "E2E #${{ github.run_number }}",
-            "buildOrder": ${{ github.run_number }},
+            "buildName": "#${{ github.run_number }}", "buildOrder": ${{ github.run_number }},
             "buildUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-            "reportName": "Spectra E2E",
-            "reportUrl": "${report_url}"
+            "reportName": "Spectra Web+API", "reportUrl": "${PAGES_URL}/web-api/"
           }
           EOF
 
-      - name: Generate unified Allure report
-        run: pnpm report:generate
+      # Mobile metadata: its own environment.properties (mobile has no getConfig globalSetup)
+      # plus executor.
+      - name: Mobile report metadata
+        run: |
+          mkdir -p allure-results-mobile
+          cat > allure-results-mobile/environment.properties <<EOF
+          Platform=android
+          Mobile.App=com.saucelabs.mydemoapp.android
+          Commit=${{ github.sha }}
+          Branch=${{ github.ref_name }}
+          CI.Run=#${{ github.run_number }}
+          EOF
+          cat > allure-results-mobile/executor.json <<EOF
+          {
+            "name": "GitHub Actions", "type": "github",
+            "url": "${{ github.server_url }}/${{ github.repository }}",
+            "buildName": "#${{ github.run_number }}", "buildOrder": ${{ github.run_number }},
+            "buildUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "reportName": "Spectra Mobile", "reportUrl": "${PAGES_URL}/mobile/"
+          }
+          EOF
 
-      # Re-running a job re-runs this report job, which uploads a SECOND
-      # "github-pages" artifact while the prior attempt's copy still exists →
-      # actions/deploy-pages fails ("Multiple artifacts named github-pages").
-      # Delete any stale copy first so deploy sees exactly one. No-op on a fresh run.
+      # Two Allure reports into one site/ tree (--clean only wipes the specific -o dir).
+      - name: Generate both Allure reports
+        run: |
+          mkdir -p site
+          pnpm exec allure generate allure-results-webapi --clean -o site/web-api
+          pnpm exec allure generate allure-results-mobile --clean -o site/mobile
+
+      # Landing page linking the two reports.
+      - name: Write landing page
+        run: |
+          mkdir -p site
+          cat > site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Spectra — Test Reports</title>
+            <style>
+              body { font-family: system-ui, sans-serif; margin: 0; min-height: 100vh;
+                     display: grid; place-items: center; background: #0d1117; color: #e6edf3; }
+              .wrap { text-align: center; padding: 2rem; }
+              h1 { margin: 0 0 .25rem; font-size: 1.8rem; }
+              p.sub { color: #8b949e; margin: 0 0 2rem; }
+              .cards { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+              a.card { display: block; min-width: 230px; padding: 1.5rem; border: 1px solid #30363d;
+                       border-radius: 12px; text-decoration: none; color: #e6edf3; background: #161b22;
+                       transition: transform .15s, border-color .15s; }
+              a.card:hover { border-color: #58a6ff; transform: translateY(-2px); }
+              .card h2 { margin: .25rem 0; font-size: 1.2rem; }
+              .card span { color: #8b949e; font-size: .85rem; }
+            </style>
+          </head>
+          <body>
+            <div class="wrap">
+              <h1>Spectra — Test Reports</h1>
+              <p class="sub">Allure reports from the latest run</p>
+              <div class="cards">
+                <a class="card" href="./web-api/"><h2>🌐 Web + API</h2><span>Playwright · Gherkin · steps &amp; traces</span></a>
+                <a class="card" href="./mobile/"><h2>📱 Mobile</h2><span>Maestro · flows by feature suite</span></a>
+              </div>
+            </div>
+          </body>
+          </html>
+          HTML
+
+      # Re-running re-uploads "github-pages"; delete any stale copy so deploy sees exactly one.
       - name: Remove stale github-pages artifact (re-run safety)
         continue-on-error: true
         env:
@@ -128,7 +201,7 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: allure-report
+          path: site
 
       - id: deploy
         uses: actions/deploy-pages@v4
