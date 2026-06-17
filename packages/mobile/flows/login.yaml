@@ -6,4 +6,4 @@ tags:
 ---
 - runFlow: ../subflows/login.yaml
 - assertVisible: "Products" # successful login returns to the catalog
-- takeScreenshot: login-success
+- takeScreenshot: screenshots/login/login-success

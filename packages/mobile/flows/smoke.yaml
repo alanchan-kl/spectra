@@ -6,4 +6,4 @@ tags:
   - smoke
 ---
 - runFlow: ../subflows/launch.yaml
-- takeScreenshot: launch
+- takeScreenshot: screenshots/smoke/launch

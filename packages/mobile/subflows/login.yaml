@@ -1,7 +1,6 @@
 # Reusable subflow: launch the app and submit the login form. Performs the login
-# ACTION only — the calling flow asserts the outcome (success OR rejection), so
-# the one subflow serves both positive and negative tests. Parameterised: override
-# creds via runFlow env, or rely on the defaults.
+# ACTION only — the calling flow asserts the outcome. Parameterised: override the
+# creds via runFlow env (e.g. for a negative test), or rely on the defaults.
 #   - runFlow:
 #       file: ../subflows/login.yaml
 #       env:

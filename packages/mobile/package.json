@@ -7,9 +7,9 @@
     "test": "maestro test -e APP_ID=com.saucelabs.mydemoapp.android flows/",
     "test:ios": "maestro test -e APP_ID=com.saucelabs.mydemo.app.ios flows/",
     "test:smoke": "maestro test --include-tags=smoke -e APP_ID=com.saucelabs.mydemoapp.android flows/",
-    "test:junit": "maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format junit --output ../../allure-results/mobile-results.xml flows/",
-    "test:parallel": "maestro test --shard-split 2 --exclude-tags=negative -e APP_ID=com.saucelabs.mydemoapp.android flows/",
-    "test:all-devices": "maestro test --shard-all 2 --exclude-tags=negative -e APP_ID=com.saucelabs.mydemoapp.android flows/",
+    "test:junit": "maestro test -e APP_ID=com.saucelabs.mydemoapp.android --format junit --test-suite-name \"Mobile (Android)\" --output ../../allure-results/mobile-results.xml flows/",
+    "test:parallel": "maestro test --shard-split 2 -e APP_ID=com.saucelabs.mydemoapp.android flows/",
+    "test:all-devices": "maestro test --shard-all 2 -e APP_ID=com.saucelabs.mydemoapp.android flows/",
     "studio": "maestro studio"
   }
 }

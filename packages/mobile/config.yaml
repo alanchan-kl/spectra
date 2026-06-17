@@ -8,5 +8,4 @@ executionOrder:
   flowsOrder:
     - smoke
     - login
-    - login-invalid
     - products
