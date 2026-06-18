@@ -258,15 +258,20 @@ packages/mobile/
 ### Linkage (every arrow is a `runFlow:`)
 
 ```
-flows/smoke.yaml          └─ runFlow ─► subflows/launch.yaml
-flows/login.yaml          └─ runFlow ─► subflows/login.yaml ─runFlow─► launch.yaml
-flows/login-invalid.yaml  └─ runFlow ─► subflows/login.yaml   (SAME action, BAD creds via env)
-flows/products.yaml       └─ runFlow ─► subflows/open-catalog.yaml
+flows/smoke.yaml     └─ runFlow ─► subflows/launch.yaml
+flows/login.yaml     └─ runFlow ─► subflows/login.yaml ─runFlow─► launch.yaml
+flows/products.yaml  └─ runFlow ─► subflows/open-catalog.yaml
 ```
 
-The single `subflows/login.yaml` action serves **both** `login.yaml` (happy path) and
-`login-invalid.yaml` (negative) — the caller passes creds via `runFlow.env` and makes
-its own assertion. Same idea as reusing a web page object.
+The reusable `subflows/login.yaml` action is parameterised (override creds via
+`runFlow.env`), so it can back a positive or a negative login test. `takeScreenshot` writes
+`screenshots/<flow>/<name>.png` (uploaded per suite in CI). The old broken
+`login-invalid.yaml` was **deleted**.
+
+> **Suites (CI):** `mobile-tests.yml` is a **feature matrix** — `Login`
+> (`--include-tags=login`) and `Products` (`--include-tags=smoke,products`), each a parallel
+> emulator job producing a real Allure suite. Allure groups by the `<testsuite name>` string
+> (same name across files = combined, distinct = separate; `--output` filenames stay unique).
 
 ### Key facts
 
@@ -631,11 +636,24 @@ set SYSTEM=system-b && set ENV=staging && pnpm test:web
 
 ---
 
-## 11. Reporting: history/trend & same-run reruns
+## 11. Reporting: two Allure reports, history/trend & same-run reruns
 
-The functional suites (web/API/mobile) publish **one unified Allure report** to GitHub
-Pages via `report.yml`: each suite uploads `allure-results-*`, the `report` job merges
-them (`merge-multiple`) and runs `pnpm report:generate` (`allure generate`).
+The suites publish **two Allure reports** on one GitHub Pages site — web/API and mobile
+produce structurally different results (web/API: rich Playwright/Gherkin *with steps*;
+mobile: flat JUnit, no steps), so they're kept separate. `report.yml`'s `report` job splits
+the downloaded `allure-results-*` artifacts into `allure-results-webapi/` and
+`allure-results-mobile/`, generates each (`allure generate <dir> -o site/<sub>`), writes a
+landing page, and deploys `site/` **once**:
+
+```
+<pages>/            → landing page (links both)
+<pages>/web-api/    → Web + API report (rich: steps, feature/story, traces)
+<pages>/mobile/     → Mobile report (flat suites: Login, Products)
+```
+
+One Pages site per repo → both ship in one deploy (subpaths); `concurrency: pages`
+serializes deploys. Each report keeps its **own** history, executor, and environment.
+(Local `pnpm report` still builds one unified report for dev convenience.)
 
 ### Trend/history — why it needs seeding
 
@@ -648,14 +666,26 @@ Generate from a blank results dir and the trend only ever has one point — it l
 Pages site** before generating:
 
 ```
-gh api repos/<owner>/<repo> pages → html_url
-   └─ curl <url>/history/{history,history-trend,duration-trend,retry-trend,categories-trend}.json
-        └─ into allure-results/history/   →  allure generate extends the trend
+gh api repos/<owner>/<repo> pages → html_url (root)
+   └─ per report: curl <url>/<sub>/history/{history,history-trend,duration-trend,…}.json
+        └─ into allure-results-<sub>/history/  →  allure generate extends THAT report's trend
+   (<sub> = web-api | mobile — each report's trend accumulates independently)
 ```
 
 It's `continue-on-error` so the very first run (nothing published yet) stays green. The
 official `actions/deploy-pages` flow is untouched — we add history *into* it, rather than
 regressing to a `gh-pages` branch.
+
+### Environment & executor (per report)
+
+- **Web/API** `environment.properties` is written by `fixtures/global-setup.ts` from
+  `getConfig()` — **web/API-only keys** (`SYSTEM`, `ENV`, `Web.BaseURL`, `API.BaseURL`).
+  **Mobile** gets its own (`Platform`, `Mobile.App`) written in `report.yml`. So each report's
+  Environment widget shows only its relevant variables (+ Commit/Branch/CI.Run provenance).
+- **`executor.json`** per report → the Executors widget + labeled, clickable Trend points
+  (build number, link to the CI run).
+- **Behaviors** (Features by stories, web/API only): the auto fixture in `fixtures/test.ts`
+  sets `feature` = Gherkin Feature, `story` = Scenario for every test.
 
 ### Reruns of failed tests — handled *within the run*
 
@@ -676,7 +706,7 @@ just the failing test, inline. With history seeded (above), the **flaky/retries 
 then accumulates across builds — the real QE signal.
 
 > For coarser, free reruns you can also use GitHub's **Re-run failed jobs** — on the mobile
-> **tag matrix** that re-runs only the failed tag-group (e.g. just `login`).
+> **feature matrix** it re-runs only the failed suite (e.g. just `Login`).
 
 ---
 
