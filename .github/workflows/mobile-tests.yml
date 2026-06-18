@@ -56,10 +56,15 @@ jobs:
           # android-emulator-runner mangles backslash continuations. The --output filename is
           # unique per suite (report.yml merges with merge-multiple, which overwrites
           # same-named files) — so each suite writes its own XML.
+          # `ts` (captured BEFORE the run = test start time) is stamped into the JUnit
+          # <testsuite> afterwards — Maestro's JUnit has no timestamp, so without this Allure
+          # shows the run time as "unknown". Per-suite job → each stamps its own file/time.
           script: |
             adb install -r packages/mobile/apps/app.apk
             mkdir -p allure-results
+            ts=$(date -u +%Y-%m-%dT%H:%M:%S)
             maestro test --include-tags=${{ matrix.suite.tags }} -e APP_ID=com.saucelabs.mydemoapp.android --format junit --test-suite-name "Mobile (Android) - ${{ matrix.suite.name }}" --output allure-results/mobile-results-${{ matrix.suite.slug }}.xml packages/mobile/flows/
+            sed -i "s|<testsuite |<testsuite timestamp=\"$ts\" |" allure-results/mobile-results-${{ matrix.suite.slug }}.xml
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
